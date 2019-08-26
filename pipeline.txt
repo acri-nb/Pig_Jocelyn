@@ -1,0 +1,28 @@
+#step1 mapping with star
+~/bin/star.2.7/STAR/bin/Linux_x86_64/STAR --runThreadN 40 --genomeDir /References_data/References_genome/PIG/STAR_INDEX --readFilesIn \
+../J41-19.fastq --outSAMunmapped None --outReadsUnmapped Fastx --chimSegmentMin 18 -- chimScoreMin 12
+
+#step2 mapping with bowtie2 of unmapped star
+bowtie2 --local --very-sensitive-local -p 20 -q --mm -x /References_data/References_genome/PIG/bowtie2_index/bowtie2 -U Unmapped.out.m\
+ate1 --un Unmapped_bowtie2 | samtools sort -o unmapped_remapBowtie2.bam -
+
+#sort of Aligned Star
+samtools sort -@ 20 -o alignedStar.bam Aligned.out.sam
+
+#merge of two mapped bam files
+java -jar /home/iarc/Downloads/picard-tools-2.5.0/picard.jar MergeSamFiles USE_THREADING=true MSD=true AS=true I=alignedStar.bam I=unm\
+apped_remapBowtie2.bam O=STARBowtie2.bam
+
+#Alignment statistics
+java -jar /home/iarc/Downloads/picard-tools-2.5.0/picard.jar CollectAlignmentSummaryMetrics I=STARBowtie2.bam  O=alignmentSumamary.txt\
+ R=/References_data/References_genome/PIG/Sus_scrofa.Sscrofa11.1.dna_rm.toplevel.fa LEVEL=ALL_READS
+ 
+ #more RNA metrics
+java -jar /home/iarc/Downloads/picard-tools-2.5.0/picard.jar CollectRnaSeqMetrics REF_FLAT=/References_data/References_genome/PIG/Sus_\
+scrofa.Sscrofa11.1.95.refflat RIBOSOMAL_INTERVALS=/References_data/References_genome/PIG/rRNA.interval STRAND=FIRST_READ_TRANSCRIPTION\
+_STRAND MINIMUM_LENGTH=100 LEVEL=ALL_READS I=STARBowtie2.bam R=/References_data/References_genome/PIG/Sus_scrofa.Sscrofa11.1.dna_rm.to\
+plevel.fa O=RNAmetrix.txt
+
+#Calculating of FPKM and TPM values
+stringtie -G /References_data/References_genome/PIG/Sus_scrofa_protein_coding_95.gtf STARBowtie2.bam -A gene_abund.tab -C cov_refs.gtf\
+ --fr
